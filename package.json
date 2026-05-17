@@ -1,0 +1,36 @@
+{
+  "name": "shellmax",
+  "version": "1.0.0",
+  "description": "ShellMax – A premium, fully customizable terminal experience",
+  "main": "src/index.js",
+  "bin": {
+    "shellmax": "./bin/shellmax.js"
+  },
+  "scripts": {
+    "start": "node bin/shellmax.js"
+  },
+  "dependencies": {
+    "blessed": "^0.1.81",
+    "chalk": "^4.1.2",
+    "discord.js-selfbot-v13": "^3.3.0",
+    "figlet": "^1.7.0",
+    "imap": "^0.8.19",
+    "input": "^1.0.1",
+    "inquirer": "^8.2.7",
+    "ink": "^4.4.1",
+    "instagram-private-api": "^1.45.3",
+    "mailparser": "^3.6.9",
+    "nodemailer": "^6.9.7",
+    "open": "^8.4.2",
+    "qrcode-terminal": "^0.12.0",
+    "react": "^18.2.0",
+    "telegram": "^2.26.2",
+    "whatsapp-web.js": "^1.26.0",
+    "@slack/web-api": "^7.0.0",
+    "@microsoft/teams-client": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "license": "MIT"
+}
