@@ -9,7 +9,7 @@ const { applyPrimary, applyAccent, applyDim } = require('./themes');
 
 const platform = process.platform;
 const ui = require('./ui');
-const { box, header, separator, section, status, cmd, dim, accent, errorMsg, successMsg, helpCategory } = ui;
+const { box, header, separator, section, status, cmd, errorMsg, successMsg, helpCategory } = ui;
 
 let outputBuffer = [];
 
@@ -17,9 +17,9 @@ function clearBuffer() { outputBuffer = []; }
 function getOutput() { return outputBuffer.join('\n'); }
 
 function write(msg) { outputBuffer.push(msg); }
-function info(msg) { write(status(msg, 'info')); }
-function ok(msg)   { write(successMsg(msg)); }
-function err(msg)  { write(errorMsg(msg)); }
+function info(msg, theme) { write(status(msg, 'info', theme)); }
+function ok(msg, theme)   { write(successMsg(msg, theme)); }
+function err(msg, theme)  { write(errorMsg(msg, theme)); }
 
 // ─── BROWSER ─────────────────────────────────────────────────────────────────
 async function openUrl(url, chrome) {
@@ -49,35 +49,35 @@ async function handle(input, openSettings, rl) {
 
     const ws = cfg.workspaces[targetKey] || cfg.workspaces[target];
     if (ws) {
-      info(`Opening workspace "${target}" (${ws.length} item${ws.length !== 1 ? 's' : ''})…`);
+      info(`Opening workspace "${target}" (${ws.length} item${ws.length !== 1 ? 's' : ''})…`, theme);
       for (const item of ws) {
         const siteUrl = cfg.websites[normalize(item)] || cfg.websites[item];
-        if (siteUrl) { await openUrl(siteUrl, true); ok(`Opened website: ${item}`); }
-        else          { const launched = launchApp(item); if (launched) ok(`Launched: ${item}`); else err(`Failed: ${item}`); }
+        if (siteUrl) { await openUrl(siteUrl, true); ok(`Opened website: ${item}`, theme); }
+        else          { const launched = launchApp(item); if (launched) ok(`Launched: ${item}`, theme); else err(`Failed: ${item}`, theme); }
       }
       return { handled: true, output: getOutput() };
     }
 
     const siteUrl = cfg.websites[targetKey] || cfg.websites[target];
     if (siteUrl) {
-      info(`Opening ${target}…`);
+      info(`Opening ${target}…`, theme);
       await openUrl(siteUrl, true);
-      ok(`Opened: ${siteUrl}`);
+      ok(`Opened: ${siteUrl}`, theme);
       return { handled: true, output: getOutput() };
     }
 
     if (looksLikeFile(target)) {
-      info(`Searching for "${target}"…`);
+      info(`Searching for "${target}"…`, theme);
       const result = openFile(target);
-      if (result.found) ok(`Found & opened: ${result.path}`);
-      else               err(`File "${target}" not found on the system.`);
+      if (result.found) ok(`Found & opened: ${result.path}`, theme);
+      else               err(`File "${target}" not found on the system.`, theme);
       return { handled: true, output: getOutput() };
     }
 
-    info(`Launching ${target}…`);
+    info(`Launching ${target}…`, theme);
     const launched = launchApp(target);
-    if (launched) ok(`Launched: ${target}`);
-    else err(`Could not launch "${target}". Try using "listapps" to see available apps.`);
+    if (launched) ok(`Launched: ${target}`, theme);
+    else err(`Could not launch "${target}". Try using "listapps" to see available apps.`, theme);
     return { handled: true, output: getOutput() };
   }
 
@@ -86,7 +86,7 @@ async function handle(input, openSettings, rl) {
     const wsName = normalize(parts[2]);
     const items  = parts.slice(3);
     updateConfig({ workspaces: { ...cfg.workspaces, [wsName]: items } });
-    ok(`Workspace "${parts[2]}" created with: ${items.join(', ')}`);
+    ok(`Workspace "${parts[2]}" created with: ${items.join(', ')}`, theme);
     return { handled: true, output: getOutput() };
   }
 
@@ -95,7 +95,7 @@ async function handle(input, openSettings, rl) {
     let url = parts[3];
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
     updateConfig({ websites: { ...cfg.websites, [parts[2].toLowerCase()]: url } });
-    ok(`Website saved: "${parts[2]}" → ${url}`);
+    ok(`Website saved: "${parts[2]}" → ${url}`, theme);
     return { handled: true, output: getOutput() };
   }
 
@@ -105,9 +105,9 @@ async function handle(input, openSettings, rl) {
     if (cfg.workspaces[wsName]) {
       const { [wsName]: _, ...rest } = cfg.workspaces;
       updateConfig({ workspaces: rest });
-      ok(`Workspace "${parts[2]}" deleted`);
+      ok(`Workspace "${parts[2]}" deleted`, theme);
     } else {
-      err(`Workspace "${parts[2]}" not found`);
+      err(`Workspace "${parts[2]}" not found`, theme);
     }
     return { handled: true, output: getOutput() };
   }
@@ -118,9 +118,9 @@ async function handle(input, openSettings, rl) {
     if (cfg.websites[webName]) {
       const { [webName]: _, ...rest } = cfg.websites;
       updateConfig({ websites: rest });
-      ok(`Website "${parts[2]}" deleted`);
+      ok(`Website "${parts[2]}" deleted`, theme);
     } else {
-      err(`Website "${parts[2]}" not found`);
+      err(`Website "${parts[2]}" not found`, theme);
     }
     return { handled: true, output: getOutput() };
   }
@@ -129,12 +129,12 @@ async function handle(input, openSettings, rl) {
   if (cmd === 'list' && parts[1]?.toLowerCase() === 'ws') {
     const ws = cfg.workspaces;
     if (Object.keys(ws).length === 0) {
-      info('No workspaces saved');
+      info('No workspaces saved', theme);
     } else {
       write('');
       for (const [name, items] of Object.entries(ws)) {
-        write(`${accent('▸')} ${dim('Workspace:')} ${accent(name)}`);
-        items.forEach(item => write(`    ${dim('•')} ${item}`));
+        write(`${applyAccent(theme, '▸')} ${applyDim(theme, 'Workspace:')} ${applyAccent(theme, name)}`);
+        items.forEach(item => write(`    ${applyDim(theme, '•')} ${applyDim(theme, item)}`));
         write('');
       }
     }
@@ -145,11 +145,11 @@ async function handle(input, openSettings, rl) {
   if (cmd === 'list' && parts[1]?.toLowerCase() === 'web') {
     const web = cfg.websites;
     if (Object.keys(web).length === 0) {
-      info('No websites saved');
+      info('No websites saved', theme);
     } else {
       write('');
       for (const [name, url] of Object.entries(web)) {
-        write(`${accent('▸')} ${dim('Website:')} ${accent(name)} ${dim('→')} ${url}`);
+        write(`${applyAccent(theme, '▸')} ${applyDim(theme, 'Website:')} ${applyAccent(theme, name)} ${applyDim(theme, '→')} ${applyDim(theme, url)}`);
       }
       write('');
     }
@@ -164,9 +164,9 @@ async function handle(input, openSettings, rl) {
       const items = cfg.workspaces[oldName];
       const { [oldName]: _, ...rest } = cfg.workspaces;
       updateConfig({ workspaces: { ...rest, [newName]: items } });
-      ok(`Workspace "${parts[2]}" renamed to "${parts[3]}"`);
+      ok(`Workspace "${parts[2]}" renamed to "${parts[3]}"`, theme);
     } else {
-      err(`Workspace "${parts[2]}" not found`);
+      err(`Workspace "${parts[2]}" not found`, theme);
     }
     return { handled: true, output: getOutput() };
   }
@@ -179,9 +179,9 @@ async function handle(input, openSettings, rl) {
       const url = cfg.websites[oldName];
       const { [oldName]: _, ...rest } = cfg.websites;
       updateConfig({ websites: { ...rest, [newName]: url } });
-      ok(`Website "${parts[2]}" renamed to "${parts[3]}"`);
+      ok(`Website "${parts[2]}" renamed to "${parts[3]}"`, theme);
     } else {
-      err(`Website "${parts[2]}" not found`);
+      err(`Website "${parts[2]}" not found`, theme);
     }
     return { handled: true, output: getOutput() };
   }
@@ -193,9 +193,9 @@ async function handle(input, openSettings, rl) {
     if (cfg.workspaces[wsName]) {
       const current = cfg.workspaces[wsName];
       updateConfig({ workspaces: { ...cfg.workspaces, [wsName]: [...current, item] } });
-      ok(`Added "${item}" to workspace "${parts[2]}"`);
+      ok(`Added "${item}" to workspace "${parts[2]}"`, theme);
     } else {
-      err(`Workspace "${parts[2]}" not found`);
+      err(`Workspace "${parts[2]}" not found`, theme);
     }
     return { handled: true, output: getOutput() };
   }
@@ -208,13 +208,13 @@ async function handle(input, openSettings, rl) {
       const current = cfg.workspaces[wsName];
       const filtered = current.filter(i => i.toLowerCase() !== item.toLowerCase());
       if (filtered.length === current.length) {
-        err(`Item "${item}" not found in workspace "${parts[2]}"`);
+        err(`Item "${item}" not found in workspace "${parts[2]}"`, theme);
       } else {
         updateConfig({ workspaces: { ...cfg.workspaces, [wsName]: filtered } });
-        ok(`Removed "${item}" from workspace "${parts[2]}"`);
+        ok(`Removed "${item}" from workspace "${parts[2]}"`, theme);
       }
     } else {
-      err(`Workspace "${parts[2]}" not found`);
+      err(`Workspace "${parts[2]}" not found`, theme);
     }
     return { handled: true, output: getOutput() };
   }
@@ -229,12 +229,12 @@ async function handle(input, openSettings, rl) {
   if (cmd === 'adm') {
     if (process.platform === 'win32') {
       const { isWindowsAdmin } = require('./executor');
-      if (isWindowsAdmin()) { ok('Already running as Administrator.'); return { handled: true, output: getOutput() }; }
-      info('Requesting elevation… A UAC prompt will appear.');
+      if (isWindowsAdmin()) { ok('Already running as Administrator.', theme); return { handled: true, output: getOutput() }; }
+      info('Requesting elevation… A UAC prompt will appear.', theme);
       if (elevate()) return { relaunch: true, output: getOutput() };
     } else {
-      if (session.adminMode) { ok('Admin mode already active.'); }
-      else { session.adminMode = true; ok('Admin mode ON — commands will run with sudo.'); }
+      if (session.adminMode) { ok('Admin mode already active.', theme); }
+      else { session.adminMode = true; ok('Admin mode ON — commands will run with sudo.', theme); }
     }
     return { handled: true, output: getOutput() };
   }
@@ -243,30 +243,30 @@ async function handle(input, openSettings, rl) {
   if (cmd === 'ggl') {
     const q   = parts.slice(1).join(' ');
     const url = q ? `https://www.google.com/search?q=${encodeURIComponent(q)}` : 'https://www.google.com';
-    info(q ? `Searching Google for "${q}"…` : 'Opening Google…');
+    info(q ? `Searching Google for "${q}"…` : 'Opening Google…', theme);
     await openUrl(url, true);
     return { handled: true, output: getOutput() };
   }
 
   // ── yt ────────────────────────────────────────────────────────────────────
   if (cmd === 'yt') {
-    info('Opening YouTube…');
+    info('Opening YouTube…', theme);
     await openUrl('https://www.youtube.com', true);
     return { handled: true, output: getOutput() };
   }
 
   // ── gh ────────────────────────────────────────────────────────────────────
   if (cmd === 'gh') {
-    info('Opening GitHub…');
+    info('Opening GitHub…', theme);
     await openUrl('https://github.com', true);
     return { handled: true, output: getOutput() };
   }
 
   // ── refreshcache ──────────────────────────────────────────────────────────
   if (cmd === 'refreshcache') {
-    info('Re-scanning installed apps…');
+    info('Re-scanning installed apps…', theme);
     const apps = refreshCache();
-    ok(`Found ${Object.keys(apps).length} apps. Cache updated.`);
+    ok(`Found ${Object.keys(apps).length} apps. Cache updated.`, theme);
     return { handled: true, output: getOutput() };
   }
 
@@ -276,13 +276,13 @@ async function handle(input, openSettings, rl) {
     const entries = Object.values(apps);
     write('');
     entries.forEach((e, i) => {
-      const num  = chalk.gray(`${String(i + 1).padStart(3)}.`);
+      const num  = applyDim(theme, `${String(i + 1).padStart(3)}.`);
       const name = applyAccent(theme, e.display.padEnd(36));
-      const type = chalk.gray(e.type || '');
+      const type = applyDim(theme, e.type || '');
       write(`  ${num} ${name} ${type}`);
     });
     write('');
-    write(chalk.gray(`  Total: ${entries.length} apps`));
+    write(applyDim(theme, `  Total: ${entries.length} apps`));
     write('');
     return { handled: true, output: getOutput() };
   }
@@ -295,9 +295,9 @@ async function handle(input, openSettings, rl) {
       e.display.toLowerCase().includes(query)
     );
     write('');
-    if (matches.length === 0) err(`No apps found matching "${query}"`);
+    if (matches.length === 0) err(`No apps found matching "${query}"`, theme);
     else matches.forEach((e) => {
-      write(`  ▶  ${applyAccent(theme, e.display.padEnd(30))}  ${chalk.gray(e.launch)}`);
+      write(`  ▶  ${applyAccent(theme, e.display.padEnd(30))}  ${applyDim(theme, e.launch)}`);
     });
     write('');
     return { handled: true, output: getOutput() };
@@ -306,15 +306,15 @@ async function handle(input, openSettings, rl) {
   // ── find <filename/partial> ──────────────────────────────────────────────
   if (cmd === 'find' && parts.length >= 2) {
     const query = parts.slice(1).join(' ');
-    info(`Searching for "${query}"…`);
+    info(`Searching for "${query}"…`, theme);
     const { searchFile } = require('./apps');
     const found = searchFile(query);
     if (found) {
       const { openWithDefault } = require('./apps');
       openWithDefault(found);
-      ok(`Found & opened: ${found}`);
+      ok(`Found & opened: ${found}`, theme);
     } else {
-      err(`File "${query}" not found. Try specifying the extension (e.g., report.pdf)`);
+      err(`File "${query}" not found. Try specifying the extension (e.g., report.pdf)`, theme);
     }
     return { handled: true, output: getOutput() };
   }
@@ -347,21 +347,21 @@ async function handle(input, openSettings, rl) {
     })();
 
     write('');
-    write(header('System Information'));
+    write(header('System Information', theme));
     write('');
-    write(`  ${dim('Hostname:')} ${accent(os.hostname())}`);
-    write(`  ${dim('OS:')} ${accent(os.platform() + ' ' + os.release())}`);
-    write(`  ${dim('Uptime:')} ${accent(Math.floor(os.uptime() / 86400) + ' days')}`);
+    write(`  ${applyDim(theme, 'Hostname:')} ${applyPrimary(theme, os.hostname())}`);
+    write(`  ${applyDim(theme, 'OS:')} ${applyPrimary(theme, os.platform() + ' ' + os.release())}`);
+    write(`  ${applyDim(theme, 'Uptime:')} ${applyPrimary(theme, Math.floor(os.uptime() / 86400) + ' days')}`);
     write('');
-    write(`  ${dim('CPU:')} ${accent(cpuModel)}`);
-    write(`  ${dim('Cores:')} ${accent(cpuCores)}`);
-    write(`  ${dim('Load:')} ${accent(load[0].toFixed(2) + ' ' + load[1].toFixed(2) + ' ' + load[2].toFixed(2))}`);
+    write(`  ${applyDim(theme, 'CPU:')} ${applyPrimary(theme, cpuModel)}`);
+    write(`  ${applyDim(theme, 'Cores:')} ${applyPrimary(theme, String(cpuCores))}`);
+    write(`  ${applyDim(theme, 'Load:')} ${applyPrimary(theme, load[0].toFixed(2) + ' ' + load[1].toFixed(2) + ' ' + load[2].toFixed(2))}`);
     write('');
-    write(`  ${dim('Memory:')} ${accent((usedMem / 1024 / 1024 / 1024).toFixed(1) + ' GB / ' + (totalMem / 1024 / 1024 / 1024).toFixed(1) + ' GB')}`);
-    write(`  ${dim('Free:')} ${accent((freeMem / 1024 / 1024 / 1024).toFixed(1) + ' GB')}`);
+    write(`  ${applyDim(theme, 'Memory:')} ${applyPrimary(theme, (usedMem / 1024 / 1024 / 1024).toFixed(1) + ' GB / ' + (totalMem / 1024 / 1024 / 1024).toFixed(1) + ' GB')}`);
+    write(`  ${applyDim(theme, 'Free:')} ${applyPrimary(theme, (freeMem / 1024 / 1024 / 1024).toFixed(1) + ' GB')}`);
     write('');
-    write(`  ${dim('Disk:')}`);
-    write(`   ${accent(disk.replace(/\n/g, '\n   '))}`);
+    write(`  ${applyDim(theme, 'Disk:')}`);
+    write(`   ${applyPrimary(theme, disk.replace(/\n/g, '\n   '))}`);
     write('');
     return { handled: true, output: getOutput() };
   }
@@ -370,7 +370,7 @@ async function handle(input, openSettings, rl) {
   if (cmd === 'ping' && parts.length >= 2) {
     const host = parts[1];
     const count = parts[2] || '4';
-    info(`Pinging ${host}...`);
+    info(`Pinging ${host}...`, theme);
     const { run } = require('./executor');
     const output = await run(`ping -n ${count} ${host}`, null);
     write(output || 'Ping failed');
@@ -381,12 +381,12 @@ async function handle(input, openSettings, rl) {
   if (cmd === 'ip') {
     const { run } = require('./executor');
     if (parts[1] === 'public') {
-      info('Fetching public IP...');
+      info('Fetching public IP...', theme);
       try {
         const { execSync } = require('child_process');
         const publicIp = execSync('curl -s ifconfig.me', { encoding: 'utf8', timeout: 5000 }).trim();
-        ok(`Public IP: ${publicIp}`);
-      } catch { err('Could not fetch public IP'); }
+        ok(`Public IP: ${publicIp}`, theme);
+      } catch { err('Could not fetch public IP', theme); }
     } else {
       const output = await run(platform === 'win32' ? 'ipconfig' : 'ifconfig', null);
       write(output || 'Could not get IP info');
@@ -398,7 +398,7 @@ async function handle(input, openSettings, rl) {
   if (cmd === 'netstat') {
     const { run } = require('./executor');
     const flags = parts[1] || '-an';
-    info(`Running netstat ${flags}...`);
+    info(`Running netstat ${flags}...`, theme);
     const output = await run(platform === 'win32' ? `netstat ${flags}` : `netstat ${flags}`, null);
     write(output || 'netstat failed');
     return { handled: true, output: getOutput() };
@@ -415,7 +415,7 @@ async function handle(input, openSettings, rl) {
     try {
       await connectPlatform(platformId);
     } catch (e) {
-      err(e.message);
+      err(e.message, theme);
     }
     return { handled: true, output: getOutput() };
   }
@@ -452,7 +452,7 @@ async function handle(input, openSettings, rl) {
 
 function getHelpOutput(theme) {
   let out = '';
-  out += '\n' + header('ShellMax Help') + '\n\n';
+  out += '\n' + header('ShellMax Help', theme) + '\n\n';
   
   out += helpCategory('Apps & Files', [
     ['open <appname>',                 'Launch any installed app'],
@@ -465,8 +465,6 @@ function getHelpOutput(theme) {
     ['list web',                       'List all websites'],
     ['rn ws <old> <new>',              'Rename a workspace'],
     ['rn web <old> <new>',             'Rename a website'],
-    ['list ws',                        'List all workspaces'],
-    ['list web',                       'List all saved websites'],
     ['del ws <name>',                  'Delete a workspace'],
     ['del web <name>',                 'Delete a website'],
     ['ws add <name> <item>',           'Add item to workspace'],
@@ -475,13 +473,13 @@ function getHelpOutput(theme) {
     ['findapp <name>',                 'Search detected apps by name'],
     ['find <filename>',                'Search & open any file on system'],
     ['refreshcache',                   'Rescan installed apps'],
-  ]);
+  ], theme);
 
   out += helpCategory('Browser', [
     ['ggl [query]',  'Open Google (with optional search)'],
     ['yt',           'Open YouTube'],
     ['gh',           'Open GitHub'],
-  ]);
+  ], theme);
 
   out += helpCategory('Messaging', [
     ['connect wa|dc|tg|mail|slack|teams','Connect a messaging platform'],
@@ -494,7 +492,7 @@ function getHelpOutput(theme) {
     ['mail <email> <subject> <body> [file]','Send email (Gmail)'],
     ['view wa|dc|tg|slack|teams <name>','View last 10 messages'],
     ['view <email>',                        'View last 5 emails'],
-  ]);
+  ], theme);
 
   out += helpCategory('System', [
     ['st',           'Open settings'],
@@ -507,7 +505,7 @@ function getHelpOutput(theme) {
     ['ping <host> [count]', 'Ping a host'],
     ['netstat [flags]', 'Show network connections'],
     ['exit / quit',  'Exit ShellMax'],
-  ]);
+  ], theme);
 
   out += '\n';
   return out;

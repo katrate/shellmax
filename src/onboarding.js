@@ -7,7 +7,6 @@ const { updateConfig, loadConfig } = require('./config');
 const { onboardingConnect, PLATFORMS, connectPlatform } = require('./messaging/index');
 const { animateLogo, staticSep }   = require('./logo');
 const { applyAccent, applyDim, applyBold, applyPrimary } = require('./themes');
-const { COLORS, accent, dim } = require('./ui');
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
 function clear() { process.stdout.write('\x1Bc'); }
@@ -29,26 +28,14 @@ function center(text, termW) {
 
 function ask(rl, q) { return new Promise((res) => rl.question(q, res)); }
 
-// ─── THEME COLOR FUNCTION ─────────────────────────────────────────────────────
-function themeFn(id) {
-  return (s) => applyPrimary(id, s);
-}
-
-function themeAccent(id) {
-  return (s) => applyAccent(id, s);
-}
-
-function themeDim(id) {
-  return (s) => applyDim(id, s);
-}
-
 // ─── LOGO SCREEN ─────────────────────────────────────────────────────────────
 async function showLogoScreen(cfg) {
   clear();
   const termW   = process.stdout.columns || 80;
-  const colorFn = themeFn(cfg.theme);
-  const dimFn   = themeDim(cfg.theme);
-  const accentFn = themeAccent(cfg.theme);
+  const theme   = cfg.theme || 'midnight';
+  const colorFn = (s) => applyPrimary(theme, s);
+  const dimFn   = (s) => applyDim(theme, s);
+  const accentFn = (s) => applyAccent(theme, s);
 
   const termH = process.stdout.rows || 24;
   const topPad = Math.max(1, Math.floor(termH / 2) - 5);
@@ -62,8 +49,9 @@ async function showLogoScreen(cfg) {
 async function showWelcomeScreen(name, cfg) {
   clear();
   const termW = process.stdout.columns || 80;
-  const colorFn = themeFn(cfg.theme);
-  const dimFn = themeDim(cfg.theme);
+  const theme = cfg.theme || 'midnight';
+  const colorFn = (s) => applyPrimary(theme, s);
+  const dimFn = (s) => applyDim(theme, s);
 
   const termH = process.stdout.rows || 24;
   const topPad = Math.max(1, Math.floor(termH / 2) - 2);
@@ -79,6 +67,7 @@ async function showWelcomeScreen(name, cfg) {
 // ─── MAIN ONBOARDING ─────────────────────────────────────────────────────────
 async function onboard() {
   const cfg = loadConfig();
+  const theme = cfg.theme || 'midnight';
 
   if (cfg.name) {
     return cfg;
@@ -88,21 +77,21 @@ async function onboard() {
   clear();
 
   const termW   = process.stdout.columns || 80;
-  const bar     = accent('━'.repeat(Math.min(termW - 4, 58)));
+  const bar     = applyDim(theme, '━'.repeat(Math.min(termW - 4, 58)));
 
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
 
   process.stdout.write('\n\n  ' + bar + '\n');
-  process.stdout.write('  ' + accent('What should I call you?') + '\n');
+  process.stdout.write('  ' + applyAccent(theme, 'What should I call you?') + '\n');
   process.stdout.write('  ' + bar + '\n');
-  const rawName = await ask(rl, dim('  → '));
+  const rawName = await ask(rl, applyDim(theme, '  → '));
   const name    = rawName.trim() || 'User';
 
   process.stdout.write('\n  ' + bar + '\n');
-  process.stdout.write('  ' + dim('ShellMax needs file access to run commands in your\n'));
-  process.stdout.write('  ' + dim('working directory and home folder.\n'));
+  process.stdout.write('  ' + applyDim(theme, 'ShellMax needs file access to run commands in your\n'));
+  process.stdout.write('  ' + applyDim(theme, 'working directory and home folder.\n'));
   process.stdout.write('  ' + bar + '\n');
-  const accRaw     = await ask(rl, dim('  Allow file access? (y/n) → '));
+  const accRaw     = await ask(rl, applyDim(theme, '  Allow file access? (y/n) → '));
   const fileAccess = accRaw.trim().toLowerCase() !== 'n';
 
   rl.close();
@@ -116,4 +105,4 @@ async function onboard() {
   return newCfg;
 }
 
-module.exports = { onboard, figletAsync, clear, center, themeFn, sleep };
+module.exports = { onboard, figletAsync, clear, center, sleep };

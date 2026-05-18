@@ -8,12 +8,12 @@ const { loadConfig, updateConfig, session } = require('./config');
 const { handle }                            = require('./commands');
 const { run, getCwd }                       = require('./executor');
 const { openSettings }                      = require('./settings');
-const { applyAccent, applyDim, applyBold }  = require('./themes');
+const { applyAccent, applyDim, applyBold, applyPrimary, applyTextColor } = require('./themes');
 const { startSepAnimation, stopSepAnimation, staticSep } = require('./logo');
-const { figletAsync, clear, center, themeFn }            = require('./onboarding');
+const { figletAsync, clear, center }        = require('./onboarding');
 
 const ui = require('./ui');
-const { box, header, separator, section, status, cmd, dim, accent, errorMsg, successMsg, helpCategory, logo, COLORS } = ui;
+const { box, header, separator, section, status, cmd, errorMsg, successMsg, helpCategory, logo } = ui;
 
 const MAX_HISTORY = 40;
 let chatHistory = [];
@@ -49,34 +49,37 @@ function wrapText(text, maxWidth) {
   return wrapped;
 }
 
-function renderChat() {
+function renderChat(cfg) {
   clearScreen();
+  const theme = cfg.theme || 'midnight';
+  const textColor = cfg.textColor || 'cyan';
   const w = getTerminalWidth();
 
   for (const msg of chatHistory) {
     if (msg.type === 'user') {
-      const label = COLORS.accent('You');
+      const label = applyAccent(theme, 'You');
       const lines = msg.text.split('\n');
       lines.forEach((line) => {
-        process.stdout.write(label + '  ' + dim(line) + '\n');
+        process.stdout.write(label + '  ' + applyDim(theme, line) + '\n');
       });
     } else if (msg.type === 'shellmax') {
-      const label = COLORS.success('ShellMax');
+      const label = applyPrimary(theme, 'ShellMax');
       const lines = msg.text.split('\n');
       lines.forEach((line) => {
         process.stdout.write(label + '  ' + line + '\n');
       });
     } else {
-      const label = COLORS.dim('•');
+      const label = applyDim(theme, '•');
       const lines = msg.text.split('\n');
       lines.forEach((line) => {
-        process.stdout.write(label + '  ' + line + '\n');
+        process.stdout.write(label + '  ' + applyDim(theme, line) + '\n');
       });
     }
     process.stdout.write('\n');
   }
 
-  process.stdout.write(separator() + '\n');
+  const sepLine = applyDim(theme, '─'.repeat(w));
+  process.stdout.write(sepLine + '\n');
 }
 
 function addMessage(text, type) {
@@ -89,17 +92,17 @@ function addMessage(text, type) {
 
 async function printWelcome(cfg) {
   clearScreen();
-  const { name, font } = cfg;
+  const { name, font, theme } = cfg;
   const termW = process.stdout.columns || 80;
 
   const art = await figletAsync(`Welcome  ${name}`, font);
-  const lines = art.split('\n').filter(line => line.trim() !== '').map(line => center(accent(line), termW)).join('\n');
+  const lines = art.split('\n').filter(line => line.trim() !== '').map(line => center(applyAccent(theme, line), termW)).join('\n');
   
   chatHistory = [];
   addMessage(lines, 'system');
-  addMessage(`${accent('ℹ')}  ${dim('Type')} ${accent('help')} ${dim('for ShellMax commands')}`, 'system');
+  addMessage(`${applyAccent(theme, 'ℹ')}  ${applyDim(theme, 'Type')} ${applyAccent(theme, 'help')} ${applyDim(theme, 'for ShellMax commands')}`, 'system');
   
-  renderChat();
+  renderChat(cfg);
 }
 
 function handleRename(input, cfg) {
@@ -107,7 +110,7 @@ function handleRename(input, cfg) {
   if (!m) return false;
   const newName = m[1].trim();
   updateConfig({ name: newName });
-  addMessage(successMsg(`Name changed to "${newName}"`), 'shellmax');
+  addMessage(successMsg(`Name changed to "${newName}"`, cfg.theme), 'shellmax');
   return true;
 }
 
@@ -122,8 +125,8 @@ async function startTerminal(cfg) {
         type: 'input',
         name: 'input',
         message: '',
-        prefix: COLORS.accent('▸ ') + dim(''),
-        suffix: dim(' >')
+        prefix: applyAccent(current.theme, '▸ '),
+        suffix: applyDim(current.theme, ' >')
       }]);
 
       const trimmed = (input || '').trim();
@@ -133,10 +136,10 @@ async function startTerminal(cfg) {
       }
 
       addMessage(trimmed, 'user');
-      renderChat();
+      renderChat(current);
 
       if (handleRename(trimmed, current)) {
-        renderChat();
+        renderChat(current);
         return loop();
       }
 
@@ -152,8 +155,8 @@ async function startTerminal(cfg) {
       }
 
       if (result.exit) {
-        addMessage(box('Goodbye! Thanks for using ShellMax', { border: 'accent' }), 'shellmax');
-        renderChat();
+        addMessage(box('Goodbye! Thanks for using ShellMax', { border: 'accent', theme: current.theme }), 'shellmax');
+        renderChat(current);
         stopSepAnimation();
         process.exit(0);
       }
@@ -170,15 +173,15 @@ async function startTerminal(cfg) {
         }
       }
 
-      renderChat();
+      renderChat(current);
       return loop();
     } catch (err) {
       if (err.message && err.message.includes('closed')) {
         stopSepAnimation();
         process.exit(0);
       }
-      addMessage(errorMsg('Error: ' + err.message), 'shellmax');
-      renderChat();
+      addMessage(errorMsg('Error: ' + err.message, current.theme), 'shellmax');
+      renderChat(current);
       return loop();
     }
   }

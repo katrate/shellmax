@@ -2,12 +2,16 @@
 const chalk = require('chalk');
 const inquirer = require('inquirer');
 const { loadConfig, updateConfig } = require('./config');
+const { THEMES, TEXT_COLORS, FONTS } = require('./themes');
 
 const ui = require('./ui');
 const { COLORS, accent, dim } = ui;
 
 const MAIN = [
   'Change Name',
+  'Theme',
+  'Text Color',
+  'Font Style',
   'Connected Accounts',
   'Exit Settings'
 ];
@@ -72,6 +76,99 @@ async function showAccounts() {
   }
 }
 
+async function showThemePicker() {
+  const cfg = loadConfig();
+  console.log();
+  console.log(`  ${dim('Current:')} ${accent(cfg.theme || 'midnight')}`);
+  console.log();
+
+  const choices = THEMES.map((t) => ({
+    name: ` ${t.name.padEnd(12)} ${dim(t.desc)}`,
+    value: t.id
+  }));
+
+  choices.push(new inquirer.Separator());
+  choices.push({ name: ' ← Back', value: 'back' });
+
+  const { themeId } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'themeId',
+      message: accent(' S E L E C T   T H E M E '),
+      choices: choices,
+      pageSize: 12,
+      prefix: COLORS.accent('◆')
+    }
+  ]);
+
+  if (themeId === 'back') return;
+
+  updateConfig({ theme: themeId });
+  console.log(`\n  ${COLORS.success('✔')} Theme set to "${themeId}"\n`);
+}
+
+async function showTextColorPicker() {
+  const cfg = loadConfig();
+  console.log();
+  console.log(`  ${dim('Current:')} ${accent(cfg.textColor || 'cyan')}`);
+  console.log();
+
+  const choices = TEXT_COLORS.map((c) => ({
+    name: ` ${c.name}`,
+    value: c.id
+  }));
+
+  choices.push(new inquirer.Separator());
+  choices.push({ name: ' ← Back', value: 'back' });
+
+  const { colorId } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'colorId',
+      message: accent(' S E L E C T   T E X T   C O L O R '),
+      choices: choices,
+      pageSize: 12,
+      prefix: COLORS.accent('◆')
+    }
+  ]);
+
+  if (colorId === 'back') return;
+
+  updateConfig({ textColor: colorId });
+  console.log(`\n  ${COLORS.success('✔')} Text color set to "${colorId}"\n`);
+}
+
+async function showFontPicker() {
+  const cfg = loadConfig();
+  console.log();
+  console.log(`  ${dim('Current:')} ${accent(cfg.font || 'Doom')}`);
+  console.log();
+
+  const choices = FONTS.map((f) => ({
+    name: ` ${f.name}`,
+    value: f.id
+  }));
+
+  choices.push(new inquirer.Separator());
+  choices.push({ name: ' ← Back', value: 'back' });
+
+  const { fontId } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'fontId',
+      message: accent(' S E L E C T   F O N T '),
+      choices: choices,
+      pageSize: 15,
+      prefix: COLORS.accent('◆')
+    }
+  ]);
+
+  if (fontId === 'back') return;
+
+  updateConfig({ font: fontId });
+  console.log(`\n  ${COLORS.success('✔')} Font set to "${fontId}"\n`);
+}
+
 async function openSettings() {
   while (true) {
     console.log();
@@ -106,6 +203,18 @@ async function openSettings() {
       } else {
         console.log(dim('\n  (no change)\n'));
       }
+    }
+
+    if (choice === 'Theme') {
+      await showThemePicker();
+    }
+
+    if (choice === 'Text Color') {
+      await showTextColorPicker();
+    }
+
+    if (choice === 'Font Style') {
+      await showFontPicker();
     }
 
     if (choice === 'Connected Accounts') {

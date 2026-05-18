@@ -1,5 +1,6 @@
 'use strict';
 const chalk = require('chalk');
+const { applyAccent, applyDim, applyPrimary } = require('./themes');
 
 const COLORS = {
   accent: chalk.hex('#A855F7'),
@@ -38,9 +39,9 @@ const BOX_STYLES = {
 };
 
 function box(content, opts = {}) {
-  const { style = 'rounded', title = '', padding = 1, border = 'dim' } = opts;
+  const { style = 'rounded', title = '', padding = 1, border = 'dim', theme = 'midnight' } = opts;
   const b = BOX_STYLES[style] || BOX_STYLES.rounded;
-  const borderFn = border === 'accent' ? COLORS.accent : COLORS.borderDim;
+  const borderFn = border === 'accent' ? (s) => applyAccent(theme, s) : (s) => applyDim(theme, s);
   
   const lines = content.split('\n');
   const maxLen = Math.max(...lines.map(l => strip(l).length), title.length);
@@ -53,7 +54,7 @@ function box(content, opts = {}) {
     const titlePad = Math.max(0, width - 4 - strip(title).length);
     const leftPad = Math.floor(titlePad / 2);
     const rightPad = titlePad - leftPad;
-    result += borderFn(b.v) + ' ' + COLORS.accentBright.bold(title) + ' '.repeat(leftPad + rightPad) + ' ' + borderFn(b.v) + '\n';
+    result += borderFn(b.v) + ' ' + applyAccent(theme, title) + ' '.repeat(leftPad + rightPad) + ' ' + borderFn(b.v) + '\n';
     result += borderFn(b.v) + b.h.repeat(width - 2) + borderFn(b.v) + '\n';
   }
   
@@ -70,71 +71,77 @@ function strip(str) {
   return str.replace(/\x1B\[[0-9;]*m/g, '');
 }
 
-function header(title) {
+function header(title, theme = 'midnight') {
   const w = (process.stdout.columns || 80) - 1;
-  const line = COLORS.borderDim('─'.repeat(w));
-  return `\n${COLORS.accent('╭')}${COLORS.borderDim('─'.repeat(w - 2))}${COLORS.accent('╮')}\n` +
-         `${COLORS.borderDim('│')} ${COLORS.accentBright.bold(title)}${' '.repeat(w - strip(title).length - 3)}${COLORS.borderDim('│')}\n` +
-         `${COLORS.accent('╰')}${line}${COLORS.accent('╯')}`;
+  const line = applyDim(theme, '─'.repeat(w));
+  return `\n${applyAccent(theme, '╭')}${applyDim(theme, '─'.repeat(w - 2))}${applyAccent(theme, '╮')}\n` +
+         `${applyDim(theme, '│')} ${applyAccent(theme, title)}${' '.repeat(w - strip(title).length - 3)}${applyDim(theme, '│')}\n` +
+         `${applyAccent(theme, '╰')}${line}${applyAccent(theme, '╯')}`;
 }
 
-function separator() {
+function separator(theme = 'midnight') {
   const w = (process.stdout.columns || 80) - 1;
-  return COLORS.borderDim('─'.repeat(w));
+  return applyDim(theme, '─'.repeat(w));
 }
 
-function section(title, content) {
-  return header(title) + '\n' + content + '\n';
+function section(title, content, theme = 'midnight') {
+  return header(title, theme) + '\n' + content + '\n';
 }
 
-function status(msg, type = 'info') {
+function status(msg, type = 'info', theme = 'midnight') {
   const icons = { success: '✔', error: '✖', warning: '⚠', info: 'ℹ' };
-  const colors = { success: COLORS.success, error: COLORS.error, warning: COLORS.warning, info: COLORS.secondary };
-  return `  ${colors[type](icons[type])} ${colors[type](msg)}`;
+  const colorFns = {
+    success: (s) => applyPrimary(theme, s),
+    error: (s) => applyAccent(theme, s),
+    warning: (s) => applyAccent(theme, s),
+    info: (s) => applyPrimary(theme, s)
+  };
+  const fn = colorFns[type] || colorFns.info;
+  return `  ${fn(icons[type])} ${fn(msg)}`;
 }
 
-function cmd(input) {
-  return `${COLORS.accent('▸')} ${COLORS.text(input)}`;
+function cmd(input, theme = 'midnight') {
+  return `${applyAccent(theme, '▸')} ${applyPrimary(theme, input)}`;
 }
 
-function dim(text) {
-  return COLORS.dim(text);
+function dim(text, theme = 'midnight') {
+  return applyDim(theme, text);
 }
 
-function accent(text) {
-  return COLORS.accent(text);
+function accent(text, theme = 'midnight') {
+  return applyAccent(theme, text);
 }
 
-function errorMsg(msg) {
-  return `  ${COLORS.error('✖')} ${COLORS.error(msg)}`;
+function errorMsg(msg, theme = 'midnight') {
+  return `  ${applyAccent(theme, '✖')} ${applyAccent(theme, msg)}`;
 }
 
-function successMsg(msg) {
-  return `  ${COLORS.success('✔')} ${COLORS.success(msg)}`;
+function successMsg(msg, theme = 'midnight') {
+  return `  ${applyPrimary(theme, '✔')} ${applyPrimary(theme, msg)}`;
 }
 
-function promptBox(input) {
+function promptBox(input, theme = 'midnight') {
   const w = Math.min(process.stdout.columns || 80, 70);
-  const promptText = `${COLORS.accent('◆')} ${COLORS.text('ShellMax')} ${COLORS.dim('│')}`;
-  const inputArea = COLORS.cyan(input || '');
-  const border = COLORS.borderDim('─'.repeat(w - 2));
+  const promptText = `${applyAccent(theme, '◆')} ${applyPrimary(theme, 'ShellMax')} ${applyDim(theme, '│')}`;
+  const inputArea = applyPrimary(theme, input || '');
+  const border = applyDim(theme, '─'.repeat(w - 2));
   
-  return `\n${COLORS.borderDim('┌')}${border}${COLORS.borderDim('┐')}\n` +
-         `${COLORS.borderDim('│')} ${promptText} ${inputArea}${' '.repeat(Math.max(0, w - strip(promptText).length - strip(input || '').length - 3))}${COLORS.borderDim('│')}\n` +
-         `${COLORS.borderDim('└')}${border}${COLORS.borderDim('┘')}`;
+  return `\n${applyDim(theme, '┌')}${border}${applyDim(theme, '┐')}\n` +
+         `${applyDim(theme, '│')} ${promptText} ${inputArea}${' '.repeat(Math.max(0, w - strip(promptText).length - strip(input || '').length - 3))}${applyDim(theme, '│')}\n` +
+         `${applyDim(theme, '└')}${border}${applyDim(theme, '┘')}`;
 }
 
-function helpCategory(title, commands) {
-  let result = `\n${COLORS.accent('▸')} ${COLORS.accentBright.bold(title)}\n`;
-  result += COLORS.dim('─'.repeat(40)) + '\n';
+function helpCategory(title, commands, theme = 'midnight') {
+  let result = `\n${applyAccent(theme, '▸')} ${applyAccent(theme, title)}\n`;
+  result += applyDim(theme, '─'.repeat(40)) + '\n';
   commands.forEach(([cmd, desc]) => {
-    result += `  ${COLORS.accent(cmd.padEnd(28))} ${COLORS.dim(desc)}\n`;
+    result += `  ${applyAccent(theme, cmd.padEnd(28))} ${applyDim(theme, desc)}\n`;
   });
   return result;
 }
 
-function logo(text) {
-  return COLORS.accentBright.bold(text);
+function logo(text, theme = 'midnight') {
+  return applyAccent(theme, text);
 }
 
 module.exports = {
