@@ -7,7 +7,22 @@
     "shellmax": "./bin/shellmax.js"
   },
   "scripts": {
+    "preinstall": "node -e \"console.log('Installing ShellMax dependencies...')\"",
+    "postinstall": "node -e \"console.log('ShellMax installed! Run: shellmax')\"",
     "start": "node bin/shellmax.js"
+  },
+  "keywords": [
+    "terminal",
+    "cli",
+    "shell",
+    "productivity",
+    "messaging",
+    "launcher"
+  ],
+  "author": "katrate",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/katrate/shellmax.git"
   },
   "dependencies": {
     "blessed": "^0.1.81",

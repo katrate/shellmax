@@ -12,34 +12,22 @@
 
 ---
 
-## Quick Install (One-Line)
+## One-Line Install
 
 ```bash
 npx shellmax
 ```
 
-Or install globally:
+This automatically downloads, installs dependencies, and sets up the global command.
 
-```bash
-npm install -g shellmax
-shellmax
-```
-
----
-
-## Manual Install
-
-Requires **Node.js 16+** and **Git**.
+Or install globally after cloning:
 
 ```bash
 git clone https://github.com/katrate/shellmax.git
 cd shellmax
-npm install
 npm install -g .
 shellmax
 ```
-
-> On first launch ShellMax runs through a quick setup: your name, file access, and messaging accounts.
 
 ---
 
@@ -112,7 +100,7 @@ All normal terminal commands (`ls`, `cd`, `mkdir`, `git`, `npm`, etc.) work as u
 
 ## Settings
 
-Type `st` to open the settings panel. Navigate with `↑ ↓`, select with `Enter`, go back with `Esc`.
+Type `st` to open the settings panel.
 
 | Setting | Options |
 |---|---|
@@ -139,6 +127,13 @@ open dev
 # Open just the website
 open myapp
 ```
+
+---
+
+## Requirements
+
+- **Node.js 16+**
+- **Git**
 
 ---
 
