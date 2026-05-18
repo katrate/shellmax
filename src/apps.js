@@ -217,12 +217,11 @@ function launchApp(appName) {
     }
 
     // Strategy 5: PowerShell search and launch
-    if (!launched) {
-      const psName = (entry ? entry.display : appName).replace(/"/g, '');
+    if (!launched && appName) {
+      const psName = appName.replace(/"/g, '');
       const ps = `
 $n = "${psName}"
 $found = $false
-# Try Start Menu .lnk search
 $lnk = Get-ChildItem "$env:APPDATA\\Microsoft\\Windows\\Start Menu" -Recurse -Filter "*$n*.lnk" -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($lnk) { Start-Process $lnk.FullName; $found = $true }
 if (-not $found) {
@@ -236,12 +235,12 @@ if (-not $found) {
 if (-not $found) {
   try { Start-Process $n -ErrorAction Stop; $found = $true } catch {}
 }
-exit [int]$found
 `.trim();
       spawn('powershell.exe',
         ['-WindowStyle', 'Hidden', '-NonInteractive', '-Command', ps],
         { detached: true, stdio: 'ignore' }
-      ).on('exit', (code) => { if (code === 0) launched = true; }).unref();
+      ).unref();
+      launched = true;
     }
   }
 

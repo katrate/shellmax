@@ -8,18 +8,26 @@ const { elevate }                           = require('./executor');
 const { applyPrimary, applyAccent, applyDim } = require('./themes');
 
 const platform = process.platform;
-const ui = require('./ui');
-const { box, header, separator, section, status, cmd, errorMsg, successMsg, helpCategory } = ui;
 
 let outputBuffer = [];
+let aiInstance = null;
+
+async function getAI() {
+  if (!aiInstance) {
+    const ShellMaxAI = require('./ai/index');
+    aiInstance = new ShellMaxAI();
+    await aiInstance.init();
+  }
+  return aiInstance;
+}
 
 function clearBuffer() { outputBuffer = []; }
 function getOutput() { return outputBuffer.join('\n'); }
 
 function write(msg) { outputBuffer.push(msg); }
-function info(msg, theme) { write(status(msg, 'info', theme)); }
-function ok(msg, theme)   { write(successMsg(msg, theme)); }
-function err(msg, theme)  { write(errorMsg(msg, theme)); }
+function info(msg, theme) { write(msg); }
+function ok(msg, theme)   { write(msg); }
+function err(msg, theme)  { write(msg); }
 
 // ─── BROWSER ─────────────────────────────────────────────────────────────────
 async function openUrl(url, chrome) {
@@ -441,6 +449,67 @@ async function handle(input, openSettings, rl) {
     return { handled: true, output: getOutput() };
   }
 
+  // ── AI COMMANDS ─────────────────────────────────────────────────────────
+  
+  // ai config <key> <value>
+  if (cmd === 'ai' && parts[1] === 'config' && parts.length >= 4) {
+    const key = parts[2].toLowerCase();
+    const value = parts.slice(3).join(' ');
+    try {
+      const ai = await getAI();
+      const result = await ai.configure(key, value);
+      ok(result, theme);
+    } catch (e) {
+      err(e.message, theme);
+    }
+    return { handled: true, output: getOutput() };
+  }
+
+  // ai status
+  if (cmd === 'ai' && parts[1] === 'status') {
+    const ai = await getAI();
+    const status = ai.status();
+    write('');
+    write(applyPrimary(theme, '  AI Status'));
+    write(applyDim(theme, '  ──────────────────'));
+    write(`  ${applyDim(theme, 'OpenRouter:')} ${status.configured ? applyPrimary(theme, '✓ Configured') : applyAccent(theme, '✗ Not Set')}`);
+    write(`  ${applyDim(theme, 'Web Search:')} ${status.searchEnabled ? applyPrimary(theme, '✓ Enabled') : applyAccent(theme, '✗ Disabled')}`);
+    write(`  ${applyDim(theme, 'Main Model:')} ${applyPrimary(theme, status.mainModel)}`);
+    write(`  ${applyDim(theme, 'Search Model:')} ${applyPrimary(theme, status.searchModel)}`);
+    if (status.savedMemory && status.savedMemory.facts && status.savedMemory.facts.length > 0) {
+      write('');
+      write(applyDim(theme, '  Saved Memory:'));
+      status.savedMemory.facts.forEach(f => write(`    ${applyPrimary(theme, '•')} ${applyDim(theme, f)}`));
+    }
+    write('');
+    return { handled: true, output: getOutput() };
+  }
+
+  // ai clear
+  if (cmd === 'ai' && parts[1] === 'clear') {
+    const ai = await getAI();
+    const result = ai.clearChat();
+    ok(result, theme);
+    return { handled: true, output: getOutput() };
+  }
+
+  // ai <message> - chat with AI
+  if (cmd === 'ai' && parts.length >= 2) {
+    const message = parts.slice(1).join(' ');
+    try {
+      const ai = await getAI();
+      info('Thinking...', theme);
+      const response = await ai.chat(message);
+      write('');
+      const lines = response.split('\n');
+      lines.forEach(line => write(applyPrimary(theme, '  ' + line)));
+      write('');
+    } catch (e) {
+      err(e.message, theme);
+    }
+    return { handled: true, output: getOutput() };
+  }
+
   // ── help ──────────────────────────────────────────────────────────────────
   if (cmd === 'help' || cmd === 'shellmax') {
     write(getHelpOutput(theme));
@@ -452,63 +521,87 @@ async function handle(input, openSettings, rl) {
 
 function getHelpOutput(theme) {
   let out = '';
-  out += '\n' + header('ShellMax Help', theme) + '\n\n';
+  out += `${applyAccent(theme, '╭──')} ShellMax Commands ${applyAccent(theme, '──╮')}\n\n`;
   
-  out += helpCategory('Apps & Files', [
-    ['open <appname>',                 'Launch any installed app'],
-    ['open <file.ext>',                'Find file on system & open it'],
-    ['open <workspace>',               'Open a saved workspace'],
-    ['open <website>',                 'Open a saved website shortcut'],
-    ['crt ws <name> <app1> <app2>…',  'Create a workspace'],
-    ['crt web <name> <url>',          'Save a website shortcut'],
-    ['list ws',                        'List all workspaces'],
-    ['list web',                       'List all websites'],
-    ['rn ws <old> <new>',              'Rename a workspace'],
-    ['rn web <old> <new>',             'Rename a website'],
-    ['del ws <name>',                  'Delete a workspace'],
-    ['del web <name>',                 'Delete a website'],
-    ['ws add <name> <item>',           'Add item to workspace'],
-    ['ws rm <name> <item>',            'Remove item from workspace'],
-    ['listapps',                       'Show all detected apps'],
-    ['findapp <name>',                 'Search detected apps by name'],
-    ['find <filename>',                'Search & open any file on system'],
-    ['refreshcache',                   'Rescan installed apps'],
+  out += helpCategory('General Commands', [
+    ['/help', 'Show this help'],
+    ['/st', 'Open settings'],
+    ['/exit, /quit', 'Exit ShellMax'],
+    ['/adm', 'Run as administrator'],
+    ['/refreshcache', 'Re-scan installed apps'],
   ], theme);
 
-  out += helpCategory('Browser', [
-    ['ggl [query]',  'Open Google (with optional search)'],
-    ['yt',           'Open YouTube'],
-    ['gh',           'Open GitHub'],
+  out += helpCategory('App & File Commands', [
+    ['/open <app>', 'Launch an app'],
+    ['/open <file>', 'Open a file'],
+    ['/open <workspace>', 'Open a saved workspace'],
+    ['/listapps', 'Show all installed apps'],
+    ['/findapp <name>', 'Search for an app'],
+    ['/find ', 'Find and open a file'],
+  ], theme);
+
+  out += helpCategory('Workspace Commands', [
+    ['/crt ws <name> <apps...>', 'Create workspace'],
+    ['/crt web <name> <url>', 'Save a website'],
+    ['/list ws', 'List workspaces'],
+    ['/list web', 'List saved websites'],
+    ['/ws add <name> <item>', 'Add item to workspace'],
+    ['/ws rm <name> <item>', 'Remove item from workspace'],
+    ['/rn ws <old> <new>', 'Rename workspace'],
+    ['/rn web <old> <new>', 'Rename website'],
+    ['/del ws <name>', 'Delete workspace'],
+    ['/del web <name>', 'Delete website'],
+  ], theme);
+
+  out += helpCategory('Quick Access', [
+    ['/ggl <search>', 'Search Google'],
+    ['/yt', 'Open YouTube'],
+    ['/gh', 'Open GitHub'],
+  ], theme);
+
+  out += helpCategory('System Info', [
+    ['/sysinfo', 'Show system information'],
+    ['/ping <host>', 'Ping a host'],
+    ['/ip', 'Show local IP'],
+    ['/ip public', 'Show public IP'],
+    ['/netstat', 'Show network connections'],
   ], theme);
 
   out += helpCategory('Messaging', [
-    ['connect wa|dc|tg|mail|slack|teams','Connect a messaging platform'],
-    ['msg wa <name/+number> <text>',        'Send WhatsApp message'],
-    ['msg dc <username> <text>',            'Send Discord DM'],
-    ['msg dc <server> <#channel> <text>',   'Send Discord channel message'],
-    ['msg tg <@username/+number> <text>',   'Send Telegram message'],
-    ['msg slack <#channel|user> <text>',   'Send Slack message'],
-    ['msg teams <#channel|user> <text>',   'Send Teams message'],
-    ['mail <email> <subject> <body> [file]','Send email (Gmail)'],
-    ['view wa|dc|tg|slack|teams <name>','View last 10 messages'],
-    ['view <email>',                        'View last 5 emails'],
+    ['/connect <platform>', 'Connect messaging (whatsapp, telegram, discord)'],
+    ['/msg <platform> <name> <text>', 'Send a message'],
+    ['/mail <email> <sub> <body>', 'Send an email'],
+    ['/view <platform> <name>', 'View conversation'],
   ], theme);
 
-  out += helpCategory('System', [
-    ['st',           'Open settings'],
-    ['adm',          'Enable admin / sudo mode'],
-    ['ps: <command>','Run a PowerShell command'],
-    ['name <name>',  'Change display name'],
-    ['sysinfo',      'Show system info (CPU, RAM, Disk)'],
-    ['ip',           'Show local IP address'],
-    ['ip public',    'Show public IP address'],
-    ['ping <host> [count]', 'Ping a host'],
-    ['netstat [flags]', 'Show network connections'],
-    ['exit / quit',  'Exit ShellMax'],
+  out += helpCategory('AI Commands (/ai ...)', [
+    ['/ai <message>', 'Chat with AI'],
+    ['/ai config openrouter <key>', 'Set OpenRouter API key'],
+    ['/ai config tavily <key>', 'Set Tavily API key'],
+    ['/ai status', 'Show AI configuration'],
+    ['/ai clear', 'Clear chat history'],
   ], theme);
 
-  out += '\n';
+  out += helpCategory('Terminal Commands (*...)', [
+    ['*ls', 'List files'],
+    ['*cd <folder>', 'Change directory'],
+    ['*mkdir <folder>', 'Create folder'],
+    ['*ping <host>', 'Ping a host'],
+    ['*<any command>', 'Run any terminal command'],
+  ], theme);
+
+  out += '\n' + applyDim(theme, 'Default: Everything goes to AI  |  / for commands  * for terminal') + '\n';
   return out;
+}
+
+function helpCategory(title, commands, theme = 'midnight') {
+  let result = `${applyAccent(theme, '▸')} ${applyAccent(theme, title)}\n`;
+  commands.forEach((cmdDesc) => {
+    const cmd = cmdDesc[0] || cmdDesc;
+    const desc = cmdDesc[1] || '';
+    result += `  ${applyAccent(theme, String(cmd).padEnd(30))}${applyDim(theme, desc)}\n`;
+  });
+  return result;
 }
 
 module.exports = { handle };

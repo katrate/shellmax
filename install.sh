@@ -12,8 +12,8 @@ if ! command -v node &> /dev/null; then
 fi
 
 NODE_VER=$(node -e "process.stdout.write(process.versions.node.split('.')[0])")
-if [ "$NODE_VER" -lt 14 ]; then
-  echo "  ✖  Node.js 14+ required. Current: $(node -v)"
+if [ "$NODE_VER" -lt 16 ]; then
+  echo "  ✖  Node.js 16+ required. Current: $(node -v)"
   exit 1
 fi
 

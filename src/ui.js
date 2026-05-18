@@ -72,10 +72,10 @@ function strip(str) {
 }
 
 function header(title, theme = 'midnight') {
-  const w = (process.stdout.columns || 80) - 1;
-  const line = applyDim(theme, '─'.repeat(w));
-  return `\n${applyAccent(theme, '╭')}${applyDim(theme, '─'.repeat(w - 2))}${applyAccent(theme, '╮')}\n` +
-         `${applyDim(theme, '│')} ${applyAccent(theme, title)}${' '.repeat(w - strip(title).length - 3)}${applyDim(theme, '│')}\n` +
+  const w = process.stdout.columns || 80;
+  const line = applyDim(theme, '─'.repeat(w - 1));
+  return `${applyAccent(theme, '╭')}${line}${applyAccent(theme, '╮')}\n` +
+         `${applyDim(theme, '│')} ${applyAccent(theme, title)}${' '.repeat(Math.max(1, w - strip(title).length - 3))}${applyDim(theme, '│')}\n` +
          `${applyAccent(theme, '╰')}${line}${applyAccent(theme, '╯')}`;
 }
 
@@ -132,10 +132,11 @@ function promptBox(input, theme = 'midnight') {
 }
 
 function helpCategory(title, commands, theme = 'midnight') {
-  let result = `\n${applyAccent(theme, '▸')} ${applyAccent(theme, title)}\n`;
-  result += applyDim(theme, '─'.repeat(40)) + '\n';
-  commands.forEach(([cmd, desc]) => {
-    result += `  ${applyAccent(theme, cmd.padEnd(28))} ${applyDim(theme, desc)}\n`;
+  let result = `${applyAccent(theme, '▸')} ${applyAccent(theme, title)}\n`;
+  commands.forEach((cmdDesc) => {
+    const cmd = cmdDesc[0] || cmdDesc;
+    const desc = cmdDesc[1] || '';
+    result += `  ${applyAccent(theme, String(cmd).padEnd(30))}${applyDim(theme, desc)}\n`;
   });
   return result;
 }

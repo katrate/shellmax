@@ -7,6 +7,7 @@ const { updateConfig, loadConfig } = require('./config');
 const { PLATFORMS, connectPlatform } = require('./messaging/index');
 const { animateLogo } = require('./logo');
 const { applyAccent, applyDim, applyPrimary } = require('./themes');
+const { updateAiConfig } = require('./ai/config');
 
 function clear() { process.stdout.write('\x1Bc'); }
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
@@ -15,6 +16,173 @@ function figletAsync(text, font) {
   return new Promise((res) => {
     figlet.text(text, { font: font || 'Slant' }, (err, data) => res(err ? text : data));
   });
+}
+
+function center(text, termW) {
+  return text.split('\n').map((line) => {
+    const raw = line.replace(/\x1B\[[0-9;]*m/g, '');
+    const pad = Math.max(0, Math.floor((termW - raw.length) / 2));
+    return ' '.repeat(pad) + line;
+  }).join('\n');
+}
+
+// ─── AI SETUP STEP ────────────────────────────────────────────────────────────
+async function askAIConfig(cfg) {
+  const theme = cfg.theme || 'midnight';
+  const w = process.stdout.columns || 80;
+  const aiRl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+
+  clear();
+  console.log('\n');
+  console.log('  ' + sep(theme, w - 4));
+  console.log();
+  console.log('  ' + applyPrimary(theme, 'AI Assistant Setup (Optional)'));
+  console.log();
+  console.log('  ' + applyDim(theme, 'Enable AI chat with web search in ShellMax.'));
+  console.log('  ' + applyDim(theme, 'You need free API keys from:'));
+  console.log('  ' + applyAccent(theme, '    openrouter.ai/keys'));
+  console.log('  ' + applyAccent(theme, '    tavily.io'));
+  console.log();
+  console.log('  ' + sep(theme, w - 4));
+
+  const { setupAI } = await inquirer.prompt([{
+    type: 'list',
+    name: 'setupAI',
+    message: 'Configure AI now?',
+    choices: [
+      { name: '  Enter API Keys', value: 'setup' },
+      { name: '  Skip for now', value: 'skip' }
+    ]
+  }]);
+
+  if (setupAI === 'skip') {
+    aiRl.close();
+    return null;
+  }
+
+  clear();
+  console.log('\n');
+  console.log('  ' + sep(theme));
+  console.log();
+  console.log('  ' + applyPrimary(theme, 'OpenRouter API Key'));
+  console.log('  ' + applyDim(theme, 'Get free key at: openrouter.ai/keys'));
+  console.log();
+  console.log('  ' + sep(theme));
+  console.log();
+
+  const openrouterKey = await new Promise((res) => {
+    aiRl.question(applyDim(theme, '  Paste API key (or press Enter to skip) > '), (answer) => {
+      res(answer);
+    });
+  });
+
+  let tavilyKey = '';
+  if (openrouterKey.trim()) {
+    clear();
+    console.log('\n');
+    console.log('  ' + sep(theme));
+    console.log();
+    console.log('  ' + applyPrimary(theme, 'Tavily API Key (Optional)'));
+    console.log('  ' + applyDim(theme, 'Get free key at: tavily.io'));
+    console.log('  ' + applyDim(theme, 'Enables real-time web search for AI.'));
+    console.log();
+    console.log('  ' + sep(theme));
+    console.log();
+
+    tavilyKey = await new Promise((res) => {
+      aiRl.question(applyDim(theme, '  Paste API key (or press Enter to skip) > '), (answer) => {
+        aiRl.close();
+        res(answer);
+      });
+    });
+  } else {
+    aiRl.close();
+  }
+
+  return {
+    openrouter: openrouterKey.trim() || null,
+    tavily: tavilyKey.trim() || null
+  };
+}
+
+// ─── NAME STEP ────────────────────────────────────────────────────────────────
+function ask(rl, q) { return new Promise((res) => rl.question(q, res)); }
+
+async function askName(cfg) {
+  const theme = cfg.theme || 'midnight';
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+
+  clear();
+  console.log('\n');
+  console.log('  ' + sep(theme));
+  console.log();
+  console.log('  ' + applyPrimary(theme, 'What should I call you?'));
+  console.log();
+  console.log('  ' + sep(theme));
+  console.log();
+
+  const rawName = await ask(rl, applyDim(theme, '  > '));
+  const name = rawName.trim() || 'User';
+
+  rl.close();
+  return name;
+}
+
+// ─── FILE ACCESS STEP ──────────────────────────────────────────────────────────
+async function askFileAccess(cfg) {
+  const theme = cfg.theme || 'midnight';
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+
+  clear();
+  console.log('\n');
+  console.log('  ' + sep(theme));
+  console.log();
+  console.log('  ' + applyPrimary(theme, 'File Access'));
+  console.log();
+  console.log('  ' + applyDim(theme, 'ShellMax needs file access to run commands'));
+  console.log('  ' + applyDim(theme, 'in your working directory and home folder.'));
+  console.log();
+  console.log('  ' + sep(theme));
+  console.log();
+
+  const raw = await ask(rl, applyDim(theme, '  Allow file access? (y/n) > '));
+  const allow = raw.trim().toLowerCase() !== 'n';
+
+  rl.close();
+  return allow;
+}
+
+// ─── MESSAGING STEP ───────────────────────────────────────────────────────────
+async function askMessaging(cfg) {
+  const theme = cfg.theme || 'midnight';
+  const w = process.stdout.columns || 80;
+
+  clear();
+  console.log('\n');
+  console.log('  ' + sep(theme, w - 4));
+  console.log();
+  console.log('  ' + applyPrimary(theme, 'Connect Messaging Apps (Optional)'));
+  console.log();
+  console.log('  ' + applyDim(theme, 'Select which apps you want to connect.'));
+  console.log('  ' + applyDim(theme, 'You can skip this and connect later via st > Connected Accounts.'));
+  console.log();
+  console.log('  ' + sep(theme, w - 4));
+
+  const choices = PLATFORMS.map(p => ({
+    name: `  ${p.label}`,
+    value: p.id
+  }));
+  choices.push({ name: '  Skip for now', value: 'skip' });
+
+  const { platforms } = await inquirer.prompt([{
+    type: 'checkbox',
+    name: 'platforms',
+    message: '',
+    choices: choices,
+    pageSize: 10
+  }]);
+
+  return platforms;
 }
 
 function center(text, termW) {
@@ -161,7 +329,27 @@ async function onboard() {
   // Step 4: Save basic config
   updateConfig({ name, fileAccess });
 
-  // Step 5: Messaging (optional)
+  // Step 5: AI Setup (optional)
+  const aiKeys = await askAIConfig(cfg);
+  if (aiKeys) {
+    if (aiKeys.openrouter) {
+      updateAiConfig({ openrouterApiKey: aiKeys.openrouter });
+    }
+    if (aiKeys.tavily) {
+      updateAiConfig({ tavilyApiKey: aiKeys.tavily, searchEnabled: true });
+    }
+    console.log('\n');
+    const theme = cfg.theme || 'midnight';
+    if (aiKeys.openrouter) {
+      console.log('  ' + applyPrimary(theme, '✓ OpenRouter API configured'));
+    }
+    if (aiKeys.tavily) {
+      console.log('  ' + applyPrimary(theme, '✓ Tavily API configured (web search enabled)'));
+    }
+    await sleep(1000);
+  }
+
+  // Step 6: Messaging (optional)
   const selected = await askMessaging(cfg);
 
   if (selected && selected.length > 0 && !selected.includes('skip')) {
