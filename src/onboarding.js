@@ -4,11 +4,10 @@ const figlet   = require('figlet');
 const inquirer = require('inquirer');
 
 const { updateConfig, loadConfig } = require('./config');
-const { onboardingConnect, PLATFORMS, connectPlatform } = require('./messaging/index');
-const { animateLogo, staticSep }   = require('./logo');
-const { applyAccent, applyDim, applyBold, applyPrimary } = require('./themes');
+const { PLATFORMS, connectPlatform } = require('./messaging/index');
+const { animateLogo } = require('./logo');
+const { applyAccent, applyDim, applyPrimary } = require('./themes');
 
-// ─── UTILS ───────────────────────────────────────────────────────────────────
 function clear() { process.stdout.write('\x1Bc'); }
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
@@ -28,80 +27,164 @@ function center(text, termW) {
 
 function ask(rl, q) { return new Promise((res) => rl.question(q, res)); }
 
+function line(char, len) { return char.repeat(len); }
+
 // ─── LOGO SCREEN ─────────────────────────────────────────────────────────────
 async function showLogoScreen(cfg) {
   clear();
-  const termW   = process.stdout.columns || 80;
-  const theme   = cfg.theme || 'midnight';
+  const theme = cfg.theme || 'midnight';
   const colorFn = (s) => applyPrimary(theme, s);
-  const dimFn   = (s) => applyDim(theme, s);
-  const accentFn = (s) => applyAccent(theme, s);
-
   const termH = process.stdout.rows || 24;
   const topPad = Math.max(1, Math.floor(termH / 2) - 5);
   process.stdout.write('\n'.repeat(topPad));
-
   await animateLogo(3080, colorFn, []);
   await sleep(250);
 }
 
-// ─── WELCOME SCREEN ───────────────────────────────────────────────────────────
-async function showWelcomeScreen(name, cfg) {
-  clear();
-  const termW = process.stdout.columns || 80;
-  const theme = cfg.theme || 'midnight';
-  const colorFn = (s) => applyPrimary(theme, s);
-  const dimFn = (s) => applyDim(theme, s);
+// ─── SEPARATOR ───────────────────────────────────────────────────────────────
+function sep(theme, width = 60) {
+  const bar = line('─', width);
+  return applyDim(theme, bar);
+}
 
+// ─── NAME STEP ────────────────────────────────────────────────────────────────
+async function askName(cfg) {
+  const theme = cfg.theme || 'midnight';
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+
+  clear();
+  console.log('\n');
+  console.log('  ' + sep(theme));
+  console.log();
+  console.log('  ' + applyPrimary(theme, 'What should I call you?'));
+  console.log();
+  console.log('  ' + sep(theme));
+  console.log();
+
+  const rawName = await ask(rl, applyDim(theme, '  > '));
+  const name = rawName.trim() || 'User';
+
+  rl.close();
+  return name;
+}
+
+// ─── FILE ACCESS STEP ──────────────────────────────────────────────────────────
+async function askFileAccess(cfg) {
+  const theme = cfg.theme || 'midnight';
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+
+  clear();
+  console.log('\n');
+  console.log('  ' + sep(theme));
+  console.log();
+  console.log('  ' + applyPrimary(theme, 'File Access'));
+  console.log();
+  console.log('  ' + applyDim(theme, 'ShellMax needs file access to run commands'));
+  console.log('  ' + applyDim(theme, 'in your working directory and home folder.'));
+  console.log();
+  console.log('  ' + sep(theme));
+  console.log();
+
+  const raw = await ask(rl, applyDim(theme, '  Allow file access? (y/n) > '));
+  const allow = raw.trim().toLowerCase() !== 'n';
+
+  rl.close();
+  return allow;
+}
+
+// ─── MESSAGING STEP ───────────────────────────────────────────────────────────
+async function askMessaging(cfg) {
+  const theme = cfg.theme || 'midnight';
+  const w = process.stdout.columns || 80;
+
+  clear();
+  console.log('\n');
+  console.log('  ' + sep(theme, w - 4));
+  console.log();
+  console.log('  ' + applyPrimary(theme, 'Connect Messaging Apps (Optional)'));
+  console.log();
+  console.log('  ' + applyDim(theme, 'Select which apps you want to connect.'));
+  console.log('  ' + applyDim(theme, 'You can skip this and connect later via st > Connected Accounts.'));
+  console.log();
+  console.log('  ' + sep(theme, w - 4));
+
+  const choices = PLATFORMS.map(p => ({
+    name: `  ${p.label}`,
+    value: p.id
+  }));
+  choices.push({ name: '  Skip for now', value: 'skip' });
+
+  const { platforms } = await inquirer.prompt([{
+    type: 'checkbox',
+    name: 'platforms',
+    message: '',
+    choices: choices,
+    pageSize: 10
+  }]);
+
+  return platforms;
+}
+
+// ─── WELCOME SCREEN ───────────────────────────────────────────────────────────
+async function showWelcome(name, cfg) {
+  const theme = cfg.theme || 'midnight';
+  const termW = process.stdout.columns || 80;
   const termH = process.stdout.rows || 24;
   const topPad = Math.max(1, Math.floor(termH / 2) - 2);
+
+  clear();
   process.stdout.write('\n'.repeat(topPad));
-
-  process.stdout.write(center(colorFn('Welcome ') + dimFn(name), termW) + '\n\n');
-  process.stdout.write(center(dimFn('Premium Terminal Experience'), termW) + '\n');
-
-  await sleep(800);
+  console.log(center(applyPrimary(theme, 'Welcome ') + applyDim(theme, name), termW));
+  console.log();
+  console.log(center(applyDim(theme, 'Premium Terminal Experience'), termW));
+  await sleep(1000);
   clear();
 }
 
-// ─── MAIN ONBOARDING ─────────────────────────────────────────────────────────
+// ─── MAIN ─────────────────────────────────────────────────────────────────────
 async function onboard() {
   const cfg = loadConfig();
-  const theme = cfg.theme || 'midnight';
 
   if (cfg.name) {
     return cfg;
   }
 
+  // Step 1: Logo
   await showLogoScreen(cfg);
-  clear();
 
-  const termW   = process.stdout.columns || 80;
-  const bar     = applyDim(theme, '━'.repeat(Math.min(termW - 4, 58)));
+  // Step 2: Name
+  const name = await askName(cfg);
 
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+  // Step 3: File access
+  const fileAccess = await askFileAccess(cfg);
 
-  process.stdout.write('\n\n  ' + bar + '\n');
-  process.stdout.write('  ' + applyAccent(theme, 'What should I call you?') + '\n');
-  process.stdout.write('  ' + bar + '\n');
-  const rawName = await ask(rl, applyDim(theme, '  → '));
-  const name    = rawName.trim() || 'User';
-
-  process.stdout.write('\n  ' + bar + '\n');
-  process.stdout.write('  ' + applyDim(theme, 'ShellMax needs file access to run commands in your\n'));
-  process.stdout.write('  ' + applyDim(theme, 'working directory and home folder.\n'));
-  process.stdout.write('  ' + bar + '\n');
-  const accRaw     = await ask(rl, applyDim(theme, '  Allow file access? (y/n) → '));
-  const fileAccess = accRaw.trim().toLowerCase() !== 'n';
-
-  rl.close();
-
+  // Step 4: Save basic config
   updateConfig({ name, fileAccess });
 
-  await onboardingConnect(true);
+  // Step 5: Messaging (optional)
+  const selected = await askMessaging(cfg);
+
+  if (selected && selected.length > 0 && !selected.includes('skip')) {
+    console.log('\n');
+    for (const id of selected) {
+      const p = PLATFORMS.find(x => x.id === id);
+      if (p) {
+        const theme = cfg.theme || 'midnight';
+        console.log('  ' + applyDim(theme, `Connecting ${p.label}...`));
+        try {
+          await connectPlatform(id);
+          console.log('  ' + applyPrimary(theme, `  ✓ ${p.label} connected`));
+        } catch (e) {
+          console.log('  ' + applyDim(theme, `  ✗ ${p.label} failed: ${e.message}`));
+        }
+      }
+    }
+    await sleep(500);
+  }
 
   const newCfg = loadConfig();
-  await showWelcomeScreen(name, newCfg);
+  await showWelcome(name, newCfg);
+
   return newCfg;
 }
 
