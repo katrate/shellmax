@@ -32,44 +32,79 @@ shellmax
 Requires **Node.js 16+** and **Git**.
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/YOUR_USERNAME/shellmax.git
-
-# 2. Enter directory
+git clone https://github.com/katrate/shellmax.git
 cd shellmax
-
-# 3. Install dependencies
 npm install
-
-# 4. Install globally
 npm install -g .
-
-# 5. Launch
 shellmax
 ```
 
-> On first launch ShellMax runs through a quick setup: your name and file access permission.
+> On first launch ShellMax runs through a quick setup: your name, file access, and messaging accounts.
 
 ---
 
 ## Commands
 
+### Apps & Files
+
 | Command | Description |
 |---|---|
 | `open <appname>` | Launch any installed app by name |
+| `open <file.ext>` | Find file on system & open it |
 | `open <workspace>` | Open a saved workspace (all apps/sites at once) |
 | `open <website>` | Open a saved website shortcut |
 | `crt ws <name> <app1> <app2>…` | Create a workspace |
 | `crt web <name> <url>` | Save a website shortcut |
+| `list ws` | List all workspaces |
+| `list web` | List all websites |
+| `rn ws <old> <new>` | Rename a workspace |
+| `rn web <old> <new>` | Rename a website |
+| `del ws <name>` | Delete a workspace |
+| `del web <name>` | Delete a website |
+| `ws add <name> <item>` | Add item to workspace |
+| `ws rm <name> <item>` | Remove item from workspace |
+| `listapps` | Show all detected apps |
+| `findapp <name>` | Search detected apps by name |
+| `find <filename>` | Search & open any file on system |
+| `refreshcache` | Rescan installed apps |
+
+### Browser
+
+| Command | Description |
+|---|---|
 | `ggl [query]` | Open Google (with optional search) |
 | `yt` | Open YouTube |
 | `gh` | Open GitHub |
-| `st` | Open settings (arrow key navigation) |
-| `adm` | Elevate to admin / enable sudo for session |
-| `ps: <command>` | Run a PowerShell command (Windows) |
-| `name <newname>` | Change your display name |
-| `help` | Show ShellMax command list |
-| `exit` / `quit` | Exit ShellMax |
+
+### Messaging
+
+| Command | Description |
+|---|---|
+| `connect wa\|dc\|tg\|mail\|slack\|teams` | Connect a messaging platform |
+| `msg wa <name/+number> <text>` | Send WhatsApp message |
+| `msg dc <username> <text>` | Send Discord DM |
+| `msg dc <server> <#channel> <text>` | Send Discord channel message |
+| `msg tg <@username/+number> <text>` | Send Telegram message |
+| `msg slack <#channel\|user> <text>` | Send Slack message |
+| `msg teams <#channel\|user> <text>` | Send Teams message |
+| `mail <email> <subject> <body> [file]` | Send email (Gmail) |
+| `view wa\|dc\|tg\|slack\|teams <name>` | View last 10 messages |
+| `view <email>` | View last 5 emails |
+
+### System
+
+| Command | Description |
+|---|---|
+| `st` | Open settings |
+| `adm` | Enable admin / sudo mode |
+| `ps: <command>` | Run a PowerShell command |
+| `name <name>` | Change display name |
+| `sysinfo` | Show system info (CPU, RAM, Disk) |
+| `ip` | Show local IP address |
+| `ip public` | Show public IP address |
+| `ping <host> [count]` | Ping a host |
+| `netstat [flags]` | Show network connections |
+| `exit / quit` | Exit ShellMax |
 
 All normal terminal commands (`ls`, `cd`, `mkdir`, `git`, `npm`, etc.) work as usual.
 
@@ -81,27 +116,11 @@ Type `st` to open the settings panel. Navigate with `↑ ↓`, select with `Ente
 
 | Setting | Options |
 |---|---|
+| Change Name | Your display name |
 | Theme | 10 themes (Midnight, Matrix, Dracula, Neon Punk, Ocean, Sunset, Arctic, Monokai, Crimson, Nord) |
 | Text Color | 20 colors |
 | Font Style | 30 figlet ASCII fonts |
-| Change Name | Change your display name |
-
----
-
-## Themes
-
-| Theme | Style |
-|---|---|
-| Midnight | Deep dark + electric cyan |
-| Matrix | Classic hacker green on black |
-| Dracula | Purple/pink dark fantasy |
-| Neon Punk | Cyberpunk neon on black |
-| Ocean | Deep ocean electric blue |
-| Sunset | Warm orange and red |
-| Arctic | Cold crisp blue/white |
-| Monokai | Classic code-editor yellow/green |
-| Crimson | Deep red dark |
-| Nord | Nordic dark blue |
+| Connected Accounts | WhatsApp, Discord, Telegram, Gmail, Slack, Teams |
 
 ---
 
@@ -120,16 +139,6 @@ open dev
 # Open just the website
 open myapp
 ```
-
----
-
-## Stack
-
-- **Node.js** — runtime
-- **blessed** — settings TUI
-- **figlet** — ASCII art
-- **chalk** — terminal colors
-- **open** — browser launcher
 
 ---
 
