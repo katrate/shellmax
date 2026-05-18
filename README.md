@@ -12,13 +12,15 @@
 
 ---
 
-## Quick Start
+## One-Line Install (Recommended)
 
 ```bash
 npx shellmax
 ```
 
-Or install globally:
+---
+
+Or clone and install manually:
 
 ```bash
 git clone https://github.com/katrate/shellmax.git
