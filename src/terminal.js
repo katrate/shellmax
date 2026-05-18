@@ -106,6 +106,7 @@ async function printWelcome(cfg) {
   chatHistory = [];
   addMessage(lines, 'system');
   addMessage(`${applyAccent(theme, 'ℹ')}  ${applyDim(theme, 'Type')} ${applyAccent(theme, 'help')} ${applyDim(theme, 'for ShellMax commands')}`, 'system');
+  addMessage(`${applyAccent(theme, '⚙')}  ${applyDim(theme, 'Type')} ${applyAccent(theme, 'st')} ${applyDim(theme, 'to configure connected apps, themes, and colors')}`, 'system');
   
   renderChat(cfg);
 }
