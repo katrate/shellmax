@@ -55,30 +55,34 @@ function renderChat(cfg) {
   const textColor = cfg.textColor || 'cyan';
   const w = getTerminalWidth();
 
+  const primaryFn = (s) => applyTextColor(textColor, s);
+  const accentFn = (s) => applyAccent(theme, s);
+  const dimFn = (s) => applyDim(theme, s);
+
   for (const msg of chatHistory) {
     if (msg.type === 'user') {
-      const label = applyAccent(theme, 'You');
+      const label = accentFn('You');
       const lines = msg.text.split('\n');
       lines.forEach((line) => {
-        process.stdout.write(label + '  ' + applyDim(theme, line) + '\n');
+        process.stdout.write(label + '  ' + dimFn(line) + '\n');
       });
     } else if (msg.type === 'shellmax') {
-      const label = applyPrimary(theme, 'ShellMax');
+      const label = primaryFn('ShellMax');
       const lines = msg.text.split('\n');
       lines.forEach((line) => {
-        process.stdout.write(label + '  ' + line + '\n');
+        process.stdout.write(label + '  ' + primaryFn(line) + '\n');
       });
     } else {
-      const label = applyDim(theme, '•');
+      const label = dimFn('•');
       const lines = msg.text.split('\n');
       lines.forEach((line) => {
-        process.stdout.write(label + '  ' + applyDim(theme, line) + '\n');
+        process.stdout.write(label + '  ' + dimFn(line) + '\n');
       });
     }
     process.stdout.write('\n');
   }
 
-  const sepLine = applyDim(theme, '─'.repeat(w));
+  const sepLine = dimFn('─'.repeat(w));
   process.stdout.write(sepLine + '\n');
 }
 
@@ -92,11 +96,12 @@ function addMessage(text, type) {
 
 async function printWelcome(cfg) {
   clearScreen();
-  const { name, font, theme } = cfg;
+  const { name, font, theme, textColor } = cfg;
   const termW = process.stdout.columns || 80;
+  const tc = textColor || 'cyan';
 
   const art = await figletAsync(`Welcome  ${name}`, font);
-  const lines = art.split('\n').filter(line => line.trim() !== '').map(line => center(applyAccent(theme, line), termW)).join('\n');
+  const lines = art.split('\n').filter(line => line.trim() !== '').map(line => center(applyTextColor(tc, line), termW)).join('\n');
   
   chatHistory = [];
   addMessage(lines, 'system');
@@ -119,6 +124,7 @@ async function startTerminal(cfg) {
 
   async function loop() {
     const current = loadConfig();
+    const tc = current.textColor || 'cyan';
     
     try {
       const { input } = await inquirer.prompt([{
@@ -126,7 +132,7 @@ async function startTerminal(cfg) {
         name: 'input',
         message: '',
         prefix: applyAccent(current.theme, '▸ '),
-        suffix: applyDim(current.theme, ' >')
+        suffix: applyTextColor(tc, ' >')
       }]);
 
       const trimmed = (input || '').trim();

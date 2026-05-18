@@ -1,6 +1,8 @@
 'use strict';
 const chalk = require('chalk');
 
+chalk.level = 3;
+
 // ─── 10 THEMES ────────────────────────────────────────────────────────────────
 // Each theme defines chalk color keys (used via chalk[key] or chalk.hex(key))
 const THEMES = [
