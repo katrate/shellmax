@@ -153,7 +153,7 @@ async function printWelcome(cfg) {
   chatHistory = [];
   addMessage(lines, 'system');
   addMessage(`${applyAccent(theme, 'ℹ')}  Everything goes to AI by default`, 'system');
-  addMessage(`${applyDim(theme, '/')}  ${applyDim(theme, 'Use')} ${applyAccent(theme, '/help')} ${applyDim(theme, 'for commands')}   ${applyDim(theme, '*')}  ${applyDim(theme, 'Run terminal commands like')} ${applyAccent(theme, '*ls')} ${applyDim(theme, 'or')} ${applyAccent(theme, '*ping google.com')}`, 'system');
+  addMessage(`${applyDim(theme, '/')}  ${applyDim(theme, 'Use')} ${applyAccent(theme, '/help')} ${applyDim(theme, 'for commands')}   ${applyDim(theme, '*')}  ${applyDim(theme, 'Run terminal commands')}   ${applyDim(theme, '/')}  ${applyDim(theme, 'Run')} ${applyAccent(theme, '/st')} ${applyDim(theme, 'to customize UI & AI')}`, 'system');
   
   renderChat(cfg);
 }
